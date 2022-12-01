@@ -1,0 +1,342 @@
+<script>
+	
+	var input = "";
+	var mazeArray = [];
+	var key_to_key = {};
+	var keys = {};
+	var doors = {};
+	var start_x = 0;
+	var start_y = 0
+	var start = [];
+
+	parseTextFile("file:///Users/Stephen/Documents/AdventOfCode/2019/day_18.txt");
+	
+	
+	function getKeys() {
+		
+		var key_array = Object.keys(keys);
+		var current = start;
+		var cur_key = "@";
+		
+		var queue = [];
+		var best = "";
+		var queueStruct = {};
+		queueStruct[cur_key] = {};
+		queueStruct[cur_key].pos = current;
+		queueStruct[cur_key].haves = ["@"];
+		queueStruct[cur_key].num_steps = 0;
+		queueStruct[cur_key].cur_key ="@";
+		queue.push(cur_key);
+		while (queue.length != 0) {
+			
+			var cur_path = queue[0];
+			cur_key = queueStruct[cur_path].cur_key;
+			current = queueStruct[cur_path].pos;
+			var haves = queueStruct[cur_path].haves;
+			var num_steps = queueStruct[cur_path].num_steps;
+			queue.shift();
+			
+			if (haves.length == key_array.length) {
+				
+				if (best == "" || num_steps < best) {
+					best = num_steps;
+					console.log(best);
+				}	
+			} else {
+				
+				for (var dest in key_to_key[cur_key]) {
+					
+					var destStruct = key_to_key[cur_key][dest];
+					var needed_doors = destStruct.doors;
+					var needed_keys = destStruct.keys;
+					var steps_to_dest = destStruct.length;
+					
+					var have_all_doors = true;
+					for (var door in needed_doors) {
+						
+						if (haves.indexOf(door.toLowerCase()) == -1) {
+							have_all_doors = false;
+							break;
+						}
+					}
+					
+					var have_all_keys = true;
+					for (var key in needed_keys) {
+						
+						if (haves.indexOf(key) == -1) {
+							have_all_keys = false;
+							break;
+						}
+					}
+					
+					if (have_all_doors && have_all_keys && haves.indexOf(dest) == -1) {
+						var new_path = cur_path + "_" + dest;
+						
+						if (!(new_path in queueStruct) && (num_steps+steps_to_dest) < 4646) {
+							var havesCopy = haves.slice();
+							havesCopy.push(dest);
+							queueStruct[new_path] = {};
+							queueStruct[new_path].pos = keys[dest];
+							queueStruct[new_path].cur_key = dest;
+							queueStruct[new_path].haves = havesCopy;
+							queueStruct[new_path].num_steps = num_steps + steps_to_dest;
+							queue.push(new_path);
+						}
+					}
+				}
+			}
+		}
+		
+		return best;
+	}
+	
+	
+	
+	function fullBFS() {
+		
+		
+		var pois = ["@"];
+		for (var key in keys) {
+			pois.push(key);
+		}
+		var key_to_key = {};
+		var maxX = mazeArray[0].length;
+		var maxY = mazeArray.length;
+		
+		for (var i in pois) {
+			
+			// init
+			var poi = pois[i];
+			key_to_key[poi] = {};
+			var current = (poi == "@") ? start : keys[poi];
+			var start_key = current[0] + "_" + current[1];
+			
+			for (var key in keys) {
+				
+				if (key == poi) {
+					continue;
+				}
+				
+				var end = keys[key];
+				
+				// add current to vars
+				var queue = [];
+				var visited = {};
+				var path = {};
+				queue.push(current);
+				visited[start_key] = true;
+				path[start_key] = start_key;
+			
+				while (queue.length != 0) {
+					
+					var node = queue[0];
+					var x = node[0];
+					var y = node[1];
+					var parent_key = x + "_" + y;
+					
+					// pop node from queue
+					queue.shift();
+					
+					// check neighbors
+					var isFound = false;
+					for (var ny=-1; ny<=1; ny++) {
+						for (var nx=-1; nx<=1; nx++) {
+							
+							var neighbor_x = x + nx;
+							var neighbor_y = y + ny;
+							var cur_key = neighbor_x + "_" + neighbor_y;
+							
+							// out of bounds
+							if (Math.abs(ny) == Math.abs(nx) || neighbor_y < 0 || neighbor_y >= maxY || neighbor_x < 0 || neighbor_x >= maxX) {
+								continue;
+							}
+							
+							// check if blocked by wall or has been visited
+							if (!(cur_key in visited) && mazeArray[neighbor_y][neighbor_x] != "#"){
+								
+								queue.push([neighbor_x, neighbor_y]); // add node to queue
+								visited[cur_key] = true; // mark is visited
+								path[cur_key] = parent_key; // add to path
+								
+								// if reached end, quit
+								if (end[0] == neighbor_x && end[1] == neighbor_y) {
+									isFound = true;
+									break;
+								}
+							}
+						}
+						if (isFound) {
+							break;
+						}
+					}
+					
+					if (isFound) {
+						break;
+					}
+				}
+				
+				if (isFound) {
+					
+					// start at end
+					var solution = [];
+					var cur_key = end[0] + "_" + end[1];
+					var doors_found = {};
+					var keys_found = {};
+					while (cur_key != start_key) {
+						
+						// push current key to solution array
+						var cur_point = cur_key.split("_");
+						solution.unshift([cur_point[0]*1, cur_point[1]*1]);
+						
+						// check if door at point
+						if (mazeArray[cur_point[1]*1][cur_point[0]*1] in doors) {
+							doors_found[mazeArray[cur_point[1]*1][cur_point[0]*1]] = true;
+						}
+						
+						// look for child key in path struct and get parent key
+						var parent_key = path[cur_key];
+						
+						// update cur key to parent
+						cur_key = parent_key;
+						
+						// check if key at parent point
+						var parent_point = parent_key.split("_");
+						if (parent_key != start_key && mazeArray[parent_point[1]*1][parent_point[0]*1] in keys) {
+							keys_found[mazeArray[parent_point[1]*1][parent_point[0]*1]] = true;
+						}
+					}
+					
+					key_to_key[poi][key] = {};
+					key_to_key[poi][key].length = solution.length;
+					key_to_key[poi][key].doors = doors_found;
+					key_to_key[poi][key].keys = keys_found;
+				}
+			}
+		}
+		
+		return key_to_key;
+	}
+	
+	function BFS(start, end) {
+		
+		// init
+		var queue = [];
+		var visited = {};
+		var path = {};
+		var maxX = mazeArray[0].length;
+		var maxY = mazeArray.length;
+		var start_key = start[0] + "_" + start[1];
+		
+		// add start to vars
+		queue.push(start);
+		visited[start_key] = true;
+		path[start_key] = start_key;
+		
+		while (queue.length != 0) {
+			
+			var node = queue[0];
+			var x = node[0];
+			var y = node[1];
+			var parent_key = x + "_" + y;
+			// pop node from queue
+			queue.shift();
+			
+			// check neighbors
+			var isFound = false;
+			for (var ny=-1; ny<=1; ny++) {
+				for (var nx=-1; nx<=1; nx++) {
+					
+					var neighbor_x = x + nx;
+					var neighbor_y = y + ny;
+					var key = neighbor_x + "_" + neighbor_y;
+					
+					// out of bounds
+					if (Math.abs(ny) == Math.abs(nx) || neighbor_y < 0 || neighbor_y >= maxY || neighbor_x < 0 || neighbor_x >= maxX) {
+						continue;
+					}
+					
+					// check if blocked by wall/door or has been visited
+					if (!(key in visited) && mazeArray[neighbor_y][neighbor_x] != "#" && !(mazeArray[neighbor_y][neighbor_x] in doors)){
+						
+						queue.push([neighbor_x, neighbor_y]); // add node to queue
+						visited[key] = true; // mark is visited
+						path[key] = parent_key; // add to path
+						
+						// if reached end, quit
+						if (end[0] == neighbor_x && end[1] == neighbor_y) {
+							isFound = true;
+							break;
+						}
+					}
+				}
+				if (isFound) {
+					break;
+				}
+			}
+			
+			if (isFound) {
+				break;
+			}
+		}
+		
+		var solution = [];
+		if (isFound) {
+			
+			// start at end
+			var cur_key = end[0] + "_" + end[1];
+			while (cur_key != start_key) {
+				
+				// push current key to solution array
+				var cur_point = cur_key.split("_");
+				solution.unshift([cur_point[0]*1, cur_point[1]*1]);
+				
+				// look for child key in path struct and get parent key
+				var parent_key = path[cur_key];
+				
+				// update cur key to parent
+				cur_key = parent_key;
+			}
+		}
+		return solution;
+	}
+
+	function parseInputToStruct(input_string) {
+
+		var inputArray = input_string.trim().split("\n");
+		for (var y=0; y<inputArray.length; y++) {
+			var line = inputArray[y];
+			mazeArray[y] = []
+			for (var x=0; x<line.length; x++) {
+				mazeArray[y][x] = line[x];
+
+				if (line[x] == "@") {
+					start_x = x;
+					start_y = y;
+					start = [x, y];
+				} else if (line[x] != "." && line[x] != "#") {
+
+					if (line[x] == line[x].toUpperCase()) {
+						doors[line[x]] = [x, y];
+					} else {
+						keys[line[x]] = [x, y];
+					}
+				}
+			}
+		}
+		key_to_key = fullBFS();
+	}
+
+
+	function parseTextFile(fileName) {
+		var client = new XMLHttpRequest();
+		client.open('GET', fileName);
+		client.onreadystatechange = function() {
+			input = client.responseText;
+			parseInputToStruct(input);
+		}
+		client.send();
+	}
+
+	
+	
+</script>

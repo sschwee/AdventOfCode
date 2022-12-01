@@ -1,0 +1,320 @@
+<script>
+	
+	var input = "";
+	const mazeArray = [];
+	var mazeStartX = "";
+	var mazeStartY = "";
+	var mazeEndX = 0;
+	var mazeEndY = 0;
+	var middleStartX = "";
+	var middleStartY = "";
+	var middleEndX = 0;
+	var middleEndY = 0;
+	
+	var portal_to_coords = {};
+	var coord_to_protal = {};
+	var portal_to_portal = {};
+	var start = [];
+	var end = [];
+
+	parseTextFile("file:///Users/Stephen/Documents/AdventOfCode/2019/day_20.txt");
+	
+	
+	function getPortalToPortal() {
+		
+		// get start/end and map portals
+		var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		for (var y=0; y<mazeArray.length; y++) {
+			var line = mazeArray[y];
+			for (var x=0; x<line.length; x++) {
+				
+				// check for start
+				if (line[x] == "A" && start.length == 0) {
+					
+					// check for neighbor A
+					if (x < mazeStartX) {
+						if (mazeArray[y][x+1] == "A") {
+							start = [x+2, y];
+						}
+					} else if (x > mazeEndX) {
+						if (mazeArray[y][x+1] == "A") {
+							start = [x-1, y];
+						}
+					} else if (y < mazeStartY) {
+						if (mazeArray[y+1][x] == "A") {
+							start = [x, y+2];
+						}
+					} else {
+						if (mazeArray[y+1][x] == "A") {
+							start = [x, y-1];
+						}
+					}
+				}
+			
+				// check for end
+				if (line[x] == "Z" && end.length == 0) {
+					
+					// check for neighbor Z
+					if (x < mazeStartX) {
+						if (mazeArray[y][x+1] == "Z") {
+							end = [x+2, y];
+						}
+					} else if (x > mazeEndX) {
+						if (mazeArray[y][x+1] == "Z") {
+							end = [x-1, y];
+						}
+					} else if (y < mazeStartY) {
+						if (mazeArray[y+1][x] == "Z") {
+							end = [x, y+2];
+						}
+					} else {
+						if (mazeArray[y+1][x] == "Z") {
+							end = [x, y-1];
+						}
+					}
+				}
+				
+				// check for portals
+				if (letters.indexOf(line[x]) != -1) {
+					
+					if (x == mazeStartX - 2) {
+						if (letters.indexOf(mazeArray[y][x+1]) != -1) {
+							var portal = line[x] + mazeArray[y][x+1];
+							if (!(portal in portal_to_coords)) {
+								portal_to_coords[portal] = [];
+							}
+							portal_to_coords[portal].push([x+1, y]);
+							coord_to_protal[[x+1, y]] = portal;
+						}
+					} else if (x == mazeEndX + 1) {
+						if (letters.indexOf(mazeArray[y][x+1]) != -1) {
+							var portal = line[x] + mazeArray[y][x+1];
+							if (!(portal in portal_to_coords)) {
+								portal_to_coords[portal] = [];
+							}
+							portal_to_coords[portal].push([x, y]);
+							coord_to_protal[[x, y]] = portal;
+						}
+					} else if (y == mazeStartY - 2) {
+						if (letters.indexOf(mazeArray[y+1][x]) != -1) {
+							var portal = line[x] + mazeArray[y+1][x];
+							if (!(portal in portal_to_coords)) {
+								portal_to_coords[portal] = [];
+							}
+							portal_to_coords[portal].push([x, y+1]);
+							coord_to_protal[[x, y+1]] = portal;
+						}
+					} else if (y == mazeEndY + 1) {
+						if (letters.indexOf(mazeArray[y+1][x]) != -1) {
+							var portal = line[x] + mazeArray[y+1][x];
+							if (!(portal in portal_to_coords)) {
+								portal_to_coords[portal] = [];
+							}
+							portal_to_coords[portal].push([x, y]);
+							coord_to_protal[[x, y]] = portal;
+						}
+					} else if (x == middleStartX) {
+						if (letters.indexOf(mazeArray[y][x+1]) != -1) {
+							var portal = line[x] + mazeArray[y][x+1];
+							if (!(portal in portal_to_coords)) {
+								portal_to_coords[portal] = [];
+							}
+							portal_to_coords[portal].push([x, y]);
+							coord_to_protal[[x, y]] = portal;
+						}
+					} else if (x == middleEndX) {
+						if (letters.indexOf(mazeArray[y][x-1]) != -1) {
+							var portal = mazeArray[y][x-1] + line[x];
+							if (!(portal in portal_to_coords)) {
+								portal_to_coords[portal] = [];
+							}
+							portal_to_coords[portal].push([x, y]);
+							coord_to_protal[[x, y]] = portal;
+						}
+					} else if (y == middleStartY) {
+						if (letters.indexOf(mazeArray[y+1][x]) != -1) {
+							var portal = line[x] + mazeArray[y+1][x];
+							if (!(portal in portal_to_coords)) {
+								portal_to_coords[portal] = [];
+							}
+							portal_to_coords[portal].push([x, y]);
+							coord_to_protal[[x, y]] = portal;
+						}
+					} else if (y == middleEndY) {
+						if (letters.indexOf(mazeArray[y-1][x]) != -1) {
+							var portal = mazeArray[y-1][x] + line[x];
+							if (!(portal in portal_to_coords)) {
+								portal_to_coords[portal] = [];
+							}
+							portal_to_coords[portal].push([x, y]);
+							coord_to_protal[[x, y]] = portal;
+						}
+					}
+					
+				}
+			}
+		}
+		
+		for (var portal in portal_to_coords) {
+			
+			if (portal != "AA" && portal != "ZZ") {
+				var coords = portal_to_coords[portal];
+				portal_to_portal[coords[0]] = coords[1];
+				portal_to_portal[coords[1]] = coords[0];
+			}
+		}
+	}
+	
+	
+	function BFS(start, end) {
+		
+		// init
+		var queue = [];
+		var visited = {};
+		var path = {};
+		var start_key = start[0] + "_" + start[1];
+		
+		// add start to vars
+		queue.push(start);
+		visited[start_key] = true;
+		path[start_key] = start_key;
+		
+		while (queue.length != 0) {
+			
+			var node = queue[0];
+			var x = node[0];
+			var y = node[1];
+			var parent_key = x + "_" + y;
+			// pop node from queue
+			queue.shift();
+			
+			// check neighbors
+			var isFound = false;
+			for (var ny=-1; ny<=1; ny++) {
+				for (var nx=-1; nx<=1; nx++) {
+					
+					var neighbor_x = x + nx;
+					var neighbor_y = y + ny;
+					var key = neighbor_x + "_" + neighbor_y;
+					
+					// check for portal
+					if ([neighbor_x, neighbor_y] in portal_to_portal) {
+						var coords = portal_to_portal[[neighbor_x, neighbor_y]]
+						
+						// find nearest "."
+						var foundX = "";
+						var foundY = "";
+						for (var cy=-1; cy<=1; cy++) {
+							for (var cx=-1; cx<=1; cx++) {
+								var temp_x = coords[0] + cx;
+								var temp_y = coords[1] + cy;
+								if (Math.abs(cy) == Math.abs(cx) || temp_y < mazeStartY || temp_y > mazeEndY || temp_x < mazeStartX || temp_x > mazeEndX) {
+									continue;
+								}
+								if (mazeArray[temp_y][temp_x] == ".") {
+									neighbor_x = temp_x;
+									neighbor_y = temp_y;
+									key = neighbor_x + "_" + neighbor_y;
+									break;
+								}
+							}
+						}
+					}
+					
+					// out of bounds
+					if (Math.abs(ny) == Math.abs(nx) || neighbor_y < mazeStartY || neighbor_y > mazeEndY || neighbor_x < mazeStartX || neighbor_x > mazeEndX) {
+						continue;
+					}
+					
+					// check if traversible or has been visited
+					if (!(key in visited) && mazeArray[neighbor_y][neighbor_x] == "."){
+						
+						queue.push([neighbor_x, neighbor_y]); // add node to queue
+						visited[key] = true; // mark is visited
+						path[key] = parent_key; // add to path
+						
+						// if reached end, quit
+						if (end[0] == neighbor_x && end[1] == neighbor_y) {
+							isFound = true;
+							break;
+						}
+					}
+				}
+				if (isFound) {
+					break;
+				}
+			}
+			
+			if (isFound) {
+				break;
+			}
+		}
+		
+		var solution = [];
+		if (isFound) {
+			
+			// start at end
+			var cur_key = end[0] + "_" + end[1];
+			while (cur_key != start_key) {
+				
+				// push current key to solution array
+				var cur_point = cur_key.split("_");
+				solution.unshift([cur_point[0]*1, cur_point[1]*1]);
+				
+				// look for child key in path struct and get parent key
+				var parent_key = path[cur_key];
+				
+				// update cur key to parent
+				cur_key = parent_key;
+			}
+		}
+		return solution;
+	}
+
+	function parseInputToStruct(input_string) {
+
+		var inputArray = input_string.split("\n");
+		for (var y=0; y<inputArray.length; y++) {
+			var line = inputArray[y];
+			mazeArray[y] = []
+			for (var x=0; x<line.length; x++) {
+				mazeArray[y][x] = line[x];
+				
+				// mark bounds of maze
+				if (line[x] == "#") {
+					
+					if (mazeStartX == "") {
+						mazeStartX = x;
+						mazeStartY = y;
+					}
+					
+					mazeEndX = Math.max(mazeEndX, x);
+					mazeEndY = Math.max(mazeEndY, y);
+				}
+				
+				if (line[x] == " " && mazeStartX != "" && x > mazeStartX && y > mazeStartY && x < mazeEndX && y < (inputArray.length-3)) {
+					
+					if (middleStartX == "") {
+						middleStartX = x;
+						middleStartY = y
+					}
+					
+					middleEndX = Math.max(middleEndX, x);
+					middleEndY = Math.max(middleEndY, y);
+				}
+			}
+		}
+	}
+
+
+	function parseTextFile(fileName) {
+		var client = new XMLHttpRequest();
+		client.open('GET', fileName);
+		client.onreadystatechange = function() {
+			input = client.responseText;
+			parseInputToStruct(input);
+		}
+		client.send();
+	}
+
+</script>

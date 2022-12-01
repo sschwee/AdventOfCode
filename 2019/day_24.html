@@ -1,0 +1,282 @@
+<script>
+	const input = ".###.##......##.#.#.#.#.#";
+	const inputStruct = {};
+	inputStruct[0] = {};
+	var x = 0;
+	var y = 0;
+	for (var i in input) {
+		
+		if (x > 4) {
+			y++;
+			x=0;
+		}
+		
+		var key = x + "_" + y;
+		inputStruct[0][key] = (input[i] == "#") ? 1 : 0;
+		
+		x++;
+	}
+	
+	// init first levels
+	createNewLevel(-1);
+	createNewLevel(1);
+	
+	var stateStruct = {};
+	renderState();
+	for (var minutes=1; minutes<=200; minutes++) {
+		
+		getNewState();
+		// console.log("MINUTE: " + minutes);
+		// renderState();
+	}
+	renderState();
+	calcBugs();
+	
+	
+	
+	function calcBugs() {
+		
+		var sum = 0;
+		for (var level in inputStruct) {
+			for (var y=0; y<5; y++) {
+				for (var x=0; x<5; x++) {
+					
+					var key = x + "_" + y;
+					if (inputStruct[level][key] == 1) {
+						sum++;
+					}
+				}
+			}
+		}
+		
+		console.log(sum);
+	}
+	
+	
+	function renderState() {
+		
+		var levels = (Object.keys(inputStruct).length - 1) / 2;
+		
+		for (var level = levels*-1; level < levels; level++) {
+			
+			var isEmpty = true;
+			for (var y=0; y<5; y++) {
+				for (var x=0; x<5; x++) {
+					var key = x + "_" + y;
+					if (inputStruct[level][key] == 1) {
+						isEmpty = false;
+						break;
+					}
+				}
+				if (!isEmpty) {
+					break;
+				}
+				
+			}
+			
+			if (isEmpty) {
+				continue;
+			}
+			
+			var stateString = "DEPTH: " + level + "\n";
+			for (var y=0; y<5; y++) {
+				for (var x=0; x<5; x++) {
+					
+					var key = x + "_" + y;
+					if (inputStruct[level][key] == 1) {
+						stateString += "#";
+					} else {
+						stateString += ".";
+					}
+				}
+				stateString += "\n";
+			}
+			console.log(stateString);
+		}
+	}
+	
+	
+	function calcBiodiversity() {
+		
+		var power = 0;
+		var sum = 0;
+		for (var y=0; y<5; y++) {
+			for (var x=0; x<5; x++) {
+				
+				var key = x + "_" + y;
+				if (inputStruct[key] == 1) {
+					sum += Math.pow(2, power);
+				}
+				
+				power++;
+			}
+		}
+		
+		return sum;
+	}
+	
+	
+	function createNewLevel(level) {
+		
+		inputStruct[level] = {};
+		for (var y=0; y<5; y++) {
+			for (var x=0; x<5; x++) {
+				
+				var key = x + "_" + y;
+				inputStruct[level][key] = 0;				
+			}
+		}
+	}
+	
+	
+	function getNewState() {
+		
+		var copyStruct = JSON.parse(JSON.stringify(inputStruct));
+		
+		for (var level in copyStruct) {
+			
+			level = level*1;
+			
+			for (var y=0; y<5; y++) {
+				for (var x=0; x<5; x++) {
+					
+					// skip middles
+					if (x == 2 && y == 2) {
+						continue;
+					}
+					
+					var key = x + "_" + y;
+					
+					// check neighbors
+					var adjBugs = 0;
+					var adjEmpty = 0;
+					for (var ny=-1; ny<=1; ny++) {
+						for (var nx=-1; nx<=1; nx++) {
+							
+							var neighbor_x = x + nx;
+							var neighbor_y = y + ny;
+							var neighbor_key = neighbor_x + "_" + neighbor_y;
+							
+							// not neighbors
+							if (Math.abs(ny) == Math.abs(nx)) {
+								continue;
+							} 
+							
+							// handle recursive boundaries
+							if (neighbor_y < 0 || neighbor_y > 4 || neighbor_x < 0 || neighbor_x > 4) {
+								
+								var recursiveLevel = level - 1;
+								if (!(recursiveLevel in copyStruct)) {
+									createNewLevel(recursiveLevel);
+									adjEmpty++;
+									continue;
+								}
+								
+								if (neighbor_y < 0) {
+									var recursive_key = "2_1";
+								} else if (neighbor_x < 0) {
+									var recursive_key = "1_2";
+								} else if (neighbor_y > 4) {
+									var recursive_key = "2_3";
+								} else {
+									var recursive_key = "3_2";
+								}
+								
+								if (recursive_key in copyStruct[recursiveLevel]) {
+									if (copyStruct[recursiveLevel][recursive_key] == 1) {
+										adjBugs++;
+									} else {
+										adjEmpty++;
+									}
+								} else {
+									adjEmpty++;
+								}
+								
+								continue;
+							} else if (neighbor_x == 2 && neighbor_y == 2) {
+								
+								var recursiveLevel = level + 1;
+								if (!(recursiveLevel in copyStruct)) {
+									createNewLevel(recursiveLevel);
+									adjEmpty += 5;
+									continue;
+								}
+								
+								if (y == 2) {
+									
+									if (x == 1) {
+										var rx = 0;
+									} else {
+										var rx = 4;
+									}
+									
+									for (var ry=0; ry<5; ry++) {
+										
+										var recursive_key = rx + "_" + ry;
+										
+										if (recursive_key in copyStruct[recursiveLevel]) {
+											if (copyStruct[recursiveLevel][recursive_key] == 1) {
+												adjBugs++;
+											} else {
+												adjEmpty++;
+											}
+										} else {
+											adjEmpty++;
+										}
+									}
+									
+								} else {
+									
+									if (y == 1) {
+										var ry = 0;
+									} else {
+										var ry = 4;
+									}
+									
+									for (var rx=0; rx<5; rx++) {
+										
+										var recursive_key = rx + "_" + ry;
+										
+										if (recursive_key in copyStruct[recursiveLevel]) {
+											if (copyStruct[recursiveLevel][recursive_key] == 1) {
+												adjBugs++;
+											} else {
+												adjEmpty++;
+											}
+										} else {
+											adjEmpty++;
+										}
+									}
+								}
+								
+								continue;
+							}
+							
+							if (copyStruct[level][neighbor_key] == 1) {
+								adjBugs++;
+							} else {
+								adjEmpty++;
+							}
+						}
+					}
+					
+					// currently has bug
+					if (copyStruct[level][key] == 1) {
+						
+						// if not exactly 1 bug, then bug dies
+						if (adjBugs != 1) {
+							inputStruct[level][key] = 0;
+						}
+						
+					} else {
+						
+						// if exactly 1 or two adj bugs, becomes bug
+						if (adjBugs == 1 || adjBugs == 2) {
+							inputStruct[level][key] = 1;
+						}
+					}
+				}
+			}
+		}
+	}
+</script>

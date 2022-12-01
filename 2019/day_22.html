@@ -1,0 +1,84 @@
+<script>
+	var input = "";
+	const shuffleArray = [];
+	var deck = {};
+	const deckSize = 119315717514047;
+	
+	
+	parseTextFile("file:///Users/Stephen/Documents/AdventOfCode/2019/day_22.txt");
+	
+	setTimeout(parseInputToArray, 1000);
+	
+	function shuffle() {
+		
+		for (var i in shuffleArray) {
+			
+			var instruction = shuffleArray[i].instruction;
+			
+			switch(instruction) {
+				
+				case "cut":
+					var cut = shuffleArray[i].num;
+					if (cut > 0) {
+						var temp1 = deck.slice(0, cut);
+						var temp2 = deck.slice(cut, deck.length);
+					} else {
+						var temp2 = deck.slice(cut);
+						var temp1 = deck.slice(0, deck.length + cut);
+					}
+					var temp = temp2.concat(temp1);
+					deck = temp.slice();
+					break;
+					
+				case "increment":
+					var temp = new Array(deck.length).fill(-1);;
+					var increment = shuffleArray[i].num;
+					for (var j in deck) {
+						var pos = (j * increment) % deck.length;
+						temp[pos] = deck[j];
+					}
+					deck = temp.slice();
+					break;
+					
+				case "stack":
+					deck.reverse();
+					break;
+				default:
+					console.log(instruction);
+					break;
+			}
+		}
+		
+		console.log(deck.indexOf((2019)));
+	}
+	
+	function parseInputToArray() {
+
+		var inputArray = input.trim().split("\n");
+		for (var i=0; i<inputArray.length; i++) {
+			var temp = {};
+			var instruction = inputArray[i];
+
+			if (instruction.indexOf("cut") != -1) {
+				temp.instruction = "cut";
+				temp.num = parseInt(instruction.trim().split(" ")[1]);
+			} else if (instruction.indexOf("increment") != -1) {
+				temp.instruction = "increment";
+				temp.num = parseInt(instruction.trim().split(" ")[3]);
+			} else {
+				temp.instruction = "stack";
+			}
+			shuffleArray.push(temp);
+		}
+	}
+
+
+	function parseTextFile(fileName) {
+		var client = new XMLHttpRequest();
+		client.open('GET', fileName);
+		client.onreadystatechange = function() {
+			input = client.responseText;
+		}
+		client.send();
+	}
+</script>
