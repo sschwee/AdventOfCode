@@ -5,6 +5,8 @@ var inputArray = utils.fileReader("2022/day_16.txt");
 
 var mapStruct = {};
 var flowStruct = {};
+var posFlows = [];
+const distances = {};
 for (var i in inputArray) {
 	var lineArray = inputArray[i].trim().split(';');
 	var valveArray = lineArray[0].split(' has flow rate=');
@@ -14,7 +16,40 @@ for (var i in inputArray) {
 	
 	mapStruct[valve] = tunnelArray;
 	flowStruct[valve] = rate;
+	if (rate > 0) posFlows.push(valve);
+	distances[valve] = {}
+	distances[valve][valve] = 0;
+	for (var i in tunnelArray) {
+		distances[valve][tunnelArray[i]] = 1;	
+	}
 }
+
+for (var k in flowStruct) {
+	for (var i in flowStruct) {
+		for (var j in flowStruct) {
+			distances[i][j] = Math.min(distances[i][j] || 999999, (distances[i][k] + distances[k][j]) || 999999);
+		}
+	}
+}
+
+function maxPressure(valve, time, remaining, has_elephant) {
+	var max = has_elephant ? maxPressure("AA", init_time, remaining, false) : 0;
+	for (var i in remaining) {
+		var next_valve = remaining[i];
+		var time_left = time - distances[valve][next_valve] - 1;
+		if (time_left >= 0) {
+			var new_remaining = _.clone(remaining);
+			_.pull(new_remaining, next_valve)
+			max = Math.max(max, flowStruct[next_valve]*time_left + maxPressure(next_valve, time_left, new_remaining, has_elephant));
+		}
+	}
+	return max;
+}
+var init_time = 30;
+console.log(maxPressure("AA", init_time, posFlows, false));
+var init_time = 26;
+console.log(maxPressure("AA", init_time, posFlows, true));
+return false;
 
 function BFS(start, end) {
 		
@@ -79,7 +114,6 @@ function BFS(start, end) {
 
 const start = "AA";
 
-var prev_node = start;
 var cur_node = start;
 var cur_pressure = 0;
 var total_pressure = 0;
